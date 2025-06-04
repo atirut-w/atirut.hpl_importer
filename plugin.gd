@@ -2,11 +2,14 @@
 extends EditorPlugin
 
 
+var importer: EditorSceneFormatImporterHPL
+
+
 func _enter_tree() -> void:
-	# Initialization of the plugin goes here.
-	pass
+	importer = EditorSceneFormatImporterHPL.new()
+	add_scene_format_importer_plugin(importer)
 
 
 func _exit_tree() -> void:
-	# Clean-up of the plugin goes here.
-	pass
+	remove_scene_format_importer_plugin(importer)
+	importer = null
