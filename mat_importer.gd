@@ -51,6 +51,27 @@ func _get_import_options(path: String, preset_index: int) -> Array[Dictionary]:
 			return []
 
 
+func _resolve_texture_path(path: String) -> String:
+	if path.is_empty():
+		return path
+	
+	if ResourceLoader.exists(path):
+		return path
+	
+	var normalized_path = path.replace("\\", "/")
+	
+	var components = normalized_path.split("/")
+	
+	for i in range(components.size() - 1, 0, -1):
+		var subpath = "/".join(components.slice(i))
+		
+		if FileAccess.file_exists(subpath):
+			print("Resolved texture path: ", path, " -> ", subpath)
+			return subpath
+	
+	push_error("Could not resolve texture path: ", path)
+	return path
+
 func _import(source_file: String, save_path: String, options: Dictionary, platform_variants: Array[String], gen_files: Array[String]) -> Error:
 	var parser := XMLParser.new()
 	if parser.open(source_file) != OK:
@@ -60,7 +81,7 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 	var material := ShaderMaterial.new()
 	
 	# Load the HPL3 shader
-	var shader := load("res://addons/atirut.hpl_importer/hpl3.gdshader")
+	var shader := load("uid://dm1drv680q102")
 	if shader == null:
 		push_error("Failed to load HPL3 shader")
 		return ERR_CANT_OPEN
@@ -85,17 +106,20 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 			elif name == "Specular":
 				specular_path = parser.get_named_attribute_value("File")
 	
-	# Load textures and assign to material uniforms
+	# Resolve and load textures and assign to material uniforms
 	if diffuse_path != "":
-		var diffuse_tex = load(diffuse_path)
+		var resolved_diffuse_path = _resolve_texture_path(diffuse_path)
+		var diffuse_tex = load(resolved_diffuse_path)
 		if diffuse_tex != null and diffuse_tex is Texture:
 			material.set_shader_parameter("diffuse_texture", diffuse_tex)
 	if normal_path != "":
-		var normal_tex = load(normal_path)
+		var resolved_normal_path = _resolve_texture_path(normal_path)
+		var normal_tex = load(resolved_normal_path)
 		if normal_tex != null and normal_tex is Texture:
 			material.set_shader_parameter("normal_texture", normal_tex)
 	if specular_path != "":
-		var specular_tex = load(specular_path)
+		var resolved_specular_path = _resolve_texture_path(specular_path)
+		var specular_tex = load(resolved_specular_path)
 		if specular_tex != null and specular_tex is Texture:
 			material.set_shader_parameter("specular_texture", specular_tex)
 	
