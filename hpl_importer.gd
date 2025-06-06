@@ -114,11 +114,22 @@ func _parse_vector3(str: String) -> Vector3:
 		return Vector3.ZERO
 	return Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
 
+
 func _parse_vector2(str: String) -> Vector2:
 	var parts = str.split(" ")
 	if parts.size() != 2:
 		return Vector2.ZERO
 	return Vector2(parts[0].to_float(), parts[1].to_float())
+
+
+func _rotate_uv(uv: Vector2, angle: float) -> Vector2:
+	var cos_a = cos(angle)
+	var sin_a = sin(angle)
+	return Vector2(
+		uv.x * cos_a - uv.y * sin_a,
+		uv.x * sin_a + uv.y * cos_a
+	)
+
 
 func _import_primitives(path: String, root: Node3D) -> void:
 	var parser := XMLParser.new()
@@ -141,10 +152,13 @@ func _import_primitives(path: String, root: Node3D) -> void:
 				var name_attr := parser.get_named_attribute_value("Name")
 				var start_corner_str := parser.get_named_attribute_value("StartCorner")
 				var end_corner_str := parser.get_named_attribute_value("EndCorner")
-				var corner1uv_str := parser.get_named_attribute_value("Corner1UV")
-				var corner2uv_str := parser.get_named_attribute_value("Corner2UV")
-				var corner3uv_str := parser.get_named_attribute_value("Corner3UV")
-				var corner4uv_str := parser.get_named_attribute_value("Corner4UV")
+				# var corner1uv_str := parser.get_named_attribute_value("Corner1UV")
+				# var corner2uv_str := parser.get_named_attribute_value("Corner2UV")
+				# var corner3uv_str := parser.get_named_attribute_value("Corner3UV")
+				# var corner4uv_str := parser.get_named_attribute_value("Corner4UV")
+				var tile_amount_str := parser.get_named_attribute_value("TileAmount")
+				var tile_offset_str := parser.get_named_attribute_value("TileOffset")
+				var texture_angle_str := parser.get_named_attribute_value("TextureAngle")
 
 				var pos = Vector3.ZERO
 				var rot = Vector3.ZERO
@@ -181,11 +195,36 @@ func _import_primitives(path: String, root: Node3D) -> void:
 				var v2 = Vector3(end_corner.x, start_corner.y, end_corner.z)
 				var v3 = Vector3(start_corner.x, start_corner.y, end_corner.z)
 
-				# Parse UVs from attributes, fallback to (0,0)-(1,1) if missing
-				var uv0 = _parse_vector2(corner1uv_str)
-				var uv1 = _parse_vector2(corner2uv_str)
-				var uv2 = _parse_vector2(corner3uv_str)
-				var uv3 = _parse_vector2(corner4uv_str)
+				# Compute UVs from plane size
+				var uv0 = Vector2(0, 0)
+				var uv1 = Vector2(size.x, 0)
+				var uv2 = Vector2(size.x, size.z)
+				var uv3 = Vector2(0, size.z)
+
+				# Parse tile amount, offset, and texture angle
+				var tile_amount = Vector2(1, 1)
+				var tile_offset = Vector2(0, 0)
+				var texture_angle = 0.0
+
+				if tile_amount_str != "":
+					var ta = _parse_vector3(tile_amount_str)
+					tile_amount = Vector2(ta.x, ta.z)
+				if tile_offset_str != "":
+					var to = _parse_vector3(tile_offset_str)
+					tile_offset = Vector2(to.x, to.z)
+				if texture_angle_str != "":
+					texture_angle = texture_angle_str.to_float()
+
+				# Apply tile amount, offset, and texture angle to each UV
+				uv0 = uv0 * tile_amount + tile_offset
+				uv1 = uv1 * tile_amount + tile_offset
+				uv2 = uv2 * tile_amount + tile_offset
+				uv3 = uv3 * tile_amount + tile_offset
+				if texture_angle != 0.0:
+					uv0 = _rotate_uv(uv0, texture_angle)
+					uv1 = _rotate_uv(uv1, texture_angle)
+					uv2 = _rotate_uv(uv2, texture_angle)
+					uv3 = _rotate_uv(uv3, texture_angle)
 
 				# First triangle: v0, v1, v2
 				st.set_uv(uv0)
