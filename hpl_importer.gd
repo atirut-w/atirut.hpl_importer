@@ -114,6 +114,12 @@ func _parse_vector3(str: String) -> Vector3:
 		return Vector3.ZERO
 	return Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
 
+func _parse_vector2(str: String) -> Vector2:
+	var parts = str.split(" ")
+	if parts.size() != 2:
+		return Vector2.ZERO
+	return Vector2(parts[0].to_float(), parts[1].to_float())
+
 func _import_primitives(path: String, root: Node3D) -> void:
 	var parser := XMLParser.new()
 	if parser.open(path) != OK:
@@ -135,6 +141,10 @@ func _import_primitives(path: String, root: Node3D) -> void:
 				var name_attr := parser.get_named_attribute_value("Name")
 				var start_corner_str := parser.get_named_attribute_value("StartCorner")
 				var end_corner_str := parser.get_named_attribute_value("EndCorner")
+				var corner1uv_str := parser.get_named_attribute_value("Corner1UV")
+				var corner2uv_str := parser.get_named_attribute_value("Corner2UV")
+				var corner3uv_str := parser.get_named_attribute_value("Corner3UV")
+				var corner4uv_str := parser.get_named_attribute_value("Corner4UV")
 
 				var pos = Vector3.ZERO
 				var rot = Vector3.ZERO
@@ -171,12 +181,26 @@ func _import_primitives(path: String, root: Node3D) -> void:
 				var v2 = Vector3(end_corner.x, start_corner.y, end_corner.z)
 				var v3 = Vector3(start_corner.x, start_corner.y, end_corner.z)
 
+				# Parse UVs from attributes, fallback to (0,0)-(1,1) if missing
+				var uv0 = _parse_vector2(corner1uv_str)
+				var uv1 = _parse_vector2(corner2uv_str)
+				var uv2 = _parse_vector2(corner3uv_str)
+				var uv3 = _parse_vector2(corner4uv_str)
+
+				# First triangle: v0, v1, v2
+				st.set_uv(uv0)
 				st.add_vertex(v0)
+				st.set_uv(uv1)
 				st.add_vertex(v1)
+				st.set_uv(uv2)
 				st.add_vertex(v2)
 
+				# Second triangle: v0, v2, v3
+				st.set_uv(uv0)
 				st.add_vertex(v0)
+				st.set_uv(uv2)
 				st.add_vertex(v2)
+				st.set_uv(uv3)
 				st.add_vertex(v3)
 
 				st.generate_normals()
